@@ -4,3 +4,7 @@ lib
 .Python
 pip-selfcheck.json
 Gemfile.lock
+
+.project
+
+.pydevproject
