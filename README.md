@@ -30,3 +30,5 @@ https://github.com/soffes/sonos
 https://developer.gracenote.com/web-api
 
 https://github.com/muffinista/chatterbot
+
+https://github.com/thricedotted/twitterbot
