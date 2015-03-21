@@ -1,18 +1,16 @@
 import soco
+from soco.plugins.spotify import Spotify, SpotifyTrack
 
-sonos = soco.discover().pop()
-
-
-
-sonos.play_uri("https://dl.dropboxusercontent.com/u/21513800/05%20An%20Eluardian%20Instance.mp3?dl=1")
-
-
+def add_song_to_queue(track_uri):
+  myplugin = Spotify(get_sonos())
+  track = SpotifyTrack(track_uri)
+  myplugin.add_track_to_queue(track)
+  return track
 
 def get_currently_playing():
-    pass
+  return get_sonos().get_current_track_info()
 
+def get_sonos():
+  return list(soco.discover())[-1]
 
-SONOS = None
-
-def _get_sonos():
     

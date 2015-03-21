@@ -2,8 +2,12 @@
 # -*- coding: utf-8 -*- #
 
 from twitterbot import TwitterBot
-import pygn
+import os
 import re
+
+from tweejay import pygn
+from tweejay.music import get_spotify_track_uri
+from tweejay.sonos import get_sonos, get_currently_playing, add_song_to_queue
 
 class MyTwitterBot(TwitterBot):
     def bot_init(self):
@@ -18,11 +22,18 @@ class MyTwitterBot(TwitterBot):
         # REQUIRED: LOGIN DETAILS! #
         ############################
 
-        self.config['api_key'] = ''
-        self.config['api_secret'] = ''
-        self.config['access_key'] = ''
-        self.config['access_secret'] = ''
+        # self.config['api_key'] = os.environ.get("TWITTER_CONSUMER_KEY")
+        # self.config['api_secret'] = os.environ.get("TWITTER_CONSUMER_SECRET")
+        # self.config['access_key'] = os.environ.get("TWITTER_ACCESS_KEY")
+        # self.config['access_secret'] = os.environ.get("TWITTER_ACCESS_SECRET")
 
+        self.config['api_key'] = '3rAedwNaoxXmmJsQo0m67D58E'
+        self.config['api_secret'] = 'xZsjjn2nAANrhOQu7EKLELLvxmBzNAUoEJtfV0kSkRCWmSbQtu'
+        self.config['access_key'] = '3102063209-eef9A4Rryqf5lIN7U5EF4vtZigTrV8x5MhQHliQ'
+        self.config['access_secret'] = 'eiCB4z94rf5laMUocZz45bMG2ehMLUptXkSKHvS5EGhtY'
+
+        self.config['clientID'] = '2222080-053B565C366B11C51D3B376809A69188'
+        self.config['userID'] = pygn.register(self.config['clientID'])
 
         ######################################
         # SEMI-OPTIONAL: OTHER CONFIG STUFF! #
@@ -50,6 +61,9 @@ class MyTwitterBot(TwitterBot):
         # follow back all followers?
         self.config['autofollow'] = True
 
+        self.register_custom_handler(self.on_now_playing, 30)
+
+        self._requests = dict()
 
         ###########################################
         # CUSTOM: your bot's own state variables! #
@@ -71,6 +85,15 @@ class MyTwitterBot(TwitterBot):
         
         # self.register_custom_handler(self.my_function, 60 * 60 * 24)
 
+    def on_now_playing(self):
+        current = get_currently_playing()
+        print "Currently playing uri: %s" % current['uri']
+        if current['uri'] in self._requests:
+            request = self._requests[current['uri']]
+            now_playing_tweet = "you're up. Now playing %s by %s from %s" % (request['track_title'], request['album_artist_name'], request['album_title'])
+            print now_playing_tweet
+            self.post_tweet(now_playing_tweet, reply_to=request['tweet'])
+            del self._requests[current['uri']]
 
     def on_scheduled_tweet(self):
         """
@@ -112,8 +135,7 @@ class MyTwitterBot(TwitterBot):
 
 
         print('mentioned: ' + tweet.text)
-        stripped_text = tweet.text.replace("@oftst123", "")
-        #stripped_text = tweet.text.replace("#play", "") #check for this later
+        stripped_text = tweet.text
 
         print('stripped_text=' + stripped_text)
 
@@ -124,15 +146,44 @@ class MyTwitterBot(TwitterBot):
         # album = params[1] if len(params) > 1 else ''
         # track = params[2] if len(params) > 2 else ''
 
-        track = re.search('#play'+'(.*)'+'by', stripped_text).group(1)
-        artist = re.search('by'+'(.*)'+'from', stripped_text)
-        artist = artist.group(1) if len(artist) > 0 else re.search('by'+'(.*)', stripped_text).group(1)
-        album = re.search('from'+'(.*)', stripped_text).group(1)
+        match = re.search('#play'+'(.*)'+'by', stripped_text)
+        if match:
+            track = match.group(1)
+            artist = re.search('by'+'(.*)'+'from', stripped_text)
+            if artist:
+                artist = artist.group(1) 
+            else:
+                end_artist = re.search('by'+'(.*)', stripped_text)
+                if end_artist:
+                    artist = end_artist.group(1)
 
-        metadata = pygn.search(clientID=clientID, userID=userID, artist=artist, album=album, track=track)
+            album = re.search('from'+'(.*)', stripped_text)
+            if album:
+                album = album.group(1)
 
-        reply_text = 'Now Playing: ' + metadata['track_title'] + ' by ' + metadata['album_artist_name'] + ' from ' + metadata['album_title']
-        self.post_tweet(reply_text, reply_to=tweet)
+            metadata = pygn.search(clientID=self.config['clientID'], userID=self.config['userID'], artist=artist, album=album, track=track)
+
+            track = get_spotify_track_uri("%s %s" % (metadata['album_artist_name'], metadata['track_title']))
+            if track:
+                sonos_track = add_song_to_queue(track) 
+
+                _request_key = sonos_track.spotify_uri
+                _request_key = _request_key.replace(":", "%3a")
+                _request_key = "x-sonos-spotify:%s?sid=12&flags=32&sn=1" % _request_key
+                print "Adding request with key: %s" % _request_key
+
+                self._requests[_request_key] = metadata
+                self._requests[_request_key]['tweet'] = tweet
+
+                reply_text = 'Added %s by %s from %s to the queue' % (metadata['track_title'], metadata['album_artist_name'], metadata['album_title'])
+                self.post_tweet(reply_text, reply_to=tweet)
+            else:
+                reply_text = "Sorry, I couldn't find %s by %s" % (metadata['track_title'], metadata['album_artist_name'])
+                self.post_tweet(reply_text, reply_to=tweet)
+        else:
+            reply_text = "Sorry, I couldn't understand that"
+            self.post_tweet(reply_text, reply_to=tweet)
+
 
     def on_timeline(self, tweet, prefix):
         """
@@ -158,13 +209,8 @@ class MyTwitterBot(TwitterBot):
         # call this to fav the tweet!
         # if something:
         #     self.favorite_tweet(tweet)
-	#self.post_tweet('now playing: '+tweet.text) 
+    	#self.post_tweet('now playing: '+tweet.text) 
 
         #raise NotImplementedError("You need to implement this to reply to/fav mentions (or pass if you don't want to)!")
 	pass
 
-if __name__ == '__main__':
-    clientID = '' # Enter your Client ID here
-    userID = pygn.register(clientID)
-    bot = MyTwitterBot()
-    bot.run()
