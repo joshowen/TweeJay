@@ -1,3 +1,5 @@
 requests
 spotipy
 -e git://github.com/joshowen/SoCo.git#egg=soco
+tweepy
+twitterbot
