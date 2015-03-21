@@ -1,0 +1,3 @@
+requests
+spotipy
+-e git://github.com/SoCo/SoCo.git#egg=soco

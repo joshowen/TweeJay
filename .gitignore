@@ -1,2 +1,13 @@
-
+bin
+include
+lib
+.Python
+pip-selfcheck.json
 Gemfile.lock
+
+.project
+
+.pydevproject
+
+
+*.pyc
