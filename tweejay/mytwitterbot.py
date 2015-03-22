@@ -22,17 +22,12 @@ class MyTwitterBot(TwitterBot):
         # REQUIRED: LOGIN DETAILS! #
         ############################
 
-        # self.config['api_key'] = os.environ.get("TWITTER_CONSUMER_KEY")
-        # self.config['api_secret'] = os.environ.get("TWITTER_CONSUMER_SECRET")
-        # self.config['access_key'] = os.environ.get("TWITTER_ACCESS_KEY")
-        # self.config['access_secret'] = os.environ.get("TWITTER_ACCESS_SECRET")
+        self.config['api_key'] = os.getenv("TWITTER_CONSUMER_KEY")
+        self.config['api_secret'] = os.getenv("TWITTER_CONSUMER_SECRET")
+        self.config['access_key'] = os.getenv("TWITTER_ACCESS_KEY")
+        self.config['access_secret'] = os.getenv("TWITTER_ACCESS_SECRET")
 
-        self.config['api_key'] = '3rAedwNaoxXmmJsQo0m67D58E'
-        self.config['api_secret'] = 'xZsjjn2nAANrhOQu7EKLELLvxmBzNAUoEJtfV0kSkRCWmSbQtu'
-        self.config['access_key'] = '3102063209-eef9A4Rryqf5lIN7U5EF4vtZigTrV8x5MhQHliQ'
-        self.config['access_secret'] = 'eiCB4z94rf5laMUocZz45bMG2ehMLUptXkSKHvS5EGhtY'
-
-        self.config['clientID'] = '2222080-053B565C366B11C51D3B376809A69188'
+        self.config['clientID'] = os.getenv('GRACENOTE_CLIENT_ID')
         self.config['userID'] = pygn.register(self.config['clientID'])
 
         ######################################
@@ -146,23 +141,24 @@ class MyTwitterBot(TwitterBot):
         # album = params[1] if len(params) > 1 else ''
         # track = params[2] if len(params) > 2 else ''
 
-        match = re.search('#play'+'(.*)'+'by', stripped_text)
+        match = re.search('#play'+'(.*)'+'by', stripped_text, re.IGNORECASE)
         if match:
             track = match.group(1)
-            artist = re.search('by'+'(.*)'+'from', stripped_text)
+            artist = re.search('by'+'(.*)'+'from', stripped_text, re.IGNORECASE)
             if artist:
                 artist = artist.group(1) 
             else:
-                end_artist = re.search('by'+'(.*)', stripped_text)
+                end_artist = re.search('by'+'(.*)', stripped_text, re.IGNORECASE)
                 if end_artist:
                     artist = end_artist.group(1)
 
-            album = re.search('from'+'(.*)', stripped_text)
+            album = re.search('from'+'(.*)', stripped_text, re.IGNORECASE)
             if album:
                 album = album.group(1)
 
             metadata = pygn.search(clientID=self.config['clientID'], userID=self.config['userID'], artist=artist, album=album, track=track)
 
+            print metadata
             track = get_spotify_track_uri("%s %s" % (metadata['album_artist_name'], metadata['track_title']))
             if track:
                 sonos_track = add_song_to_queue(track) 
